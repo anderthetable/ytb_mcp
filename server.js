@@ -4,7 +4,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { youtube } from "@googleapis/youtube";
 import { z } from "zod";
 import "dotenv/config";
-import { parseYouTubeDuration } from "./utils";
+import { parseYouTubeDuration } from "./utils.js";
 
 const PORT = process.env.PORT || 3000;
 
