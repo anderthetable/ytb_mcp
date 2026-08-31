@@ -158,6 +158,80 @@ function createMcpServer() {
     }
   );
 
+  server.registerTool(
+  "get_youtube_video",
+  {
+    title: "Get YouTube Video",
+    description:
+      "Get detailed metadata and statistics for a specific YouTube video.",
+    inputSchema: {
+      videoId: z
+        .string()
+        .min(1)
+        .describe("YouTube video ID, for example dQw4w9WgXcQ")
+    }
+  },
+  async ({ videoId }) => {
+    const response = await yt.videos.list({
+      part: ["snippet", "statistics", "contentDetails"],
+      id: [videoId]
+    });
+
+    const video = response.data.items?.[0];
+
+    if (!video) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              error: "Video not found",
+              videoId
+            })
+          }
+        ]
+      };
+    }
+
+    const duration = parseYouTubeDuration(
+      video.contentDetails?.duration
+    );
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            id: video.id,
+            title: video.snippet?.title,
+            url: `https://www.youtube.com/watch?v=${video.id}`,
+            channel: video.snippet?.channelTitle,
+            channelId: video.snippet?.channelId,
+            publishedAt: video.snippet?.publishedAt,
+            description: video.snippet?.description,
+            tags: video.snippet?.tags ?? [],
+            thumbnail:
+              video.snippet?.thumbnails?.high?.url ??
+              video.snippet?.thumbnails?.default?.url,
+            duration,
+            statistics: {
+              views: Number(
+                video.statistics?.viewCount ?? 0
+              ),
+              likes: Number(
+                video.statistics?.likeCount ?? 0
+              ),
+              comments: Number(
+                video.statistics?.commentCount ?? 0
+              )
+            }
+          })
+        }
+      ]
+    };
+  }
+);
+
   return server;
 }
 
