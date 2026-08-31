@@ -4,6 +4,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { youtube } from "@googleapis/youtube";
 import { z } from "zod";
 import "dotenv/config";
+import { parseYouTubeDuration } from "./utils";
 
 const PORT = process.env.PORT || 3000;
 
@@ -40,15 +41,64 @@ function createMcpServer() {
           .min(1)
           .max(50)
           .default(20)
-          .describe("Maximum number of videos to return")
+          .describe("Maximum number of videos to return"),
+
+        order: z
+          .enum(["relevance", "date", "viewCount", "rating"])
+          .default("relevance")
+          .describe("Order of search results"),
+
+        publishedAfter: z
+          .string()
+          .datetime()
+          .optional()
+          .describe("Only return videos published after this ISO 8601 date"),
+
+        publishedBefore: z
+          .string()
+          .datetime()
+          .optional()
+          .describe("Only return videos published before this ISO 8601 date"),
+
+        videoDuration: z
+          .enum(["any", "short", "medium", "long"])
+          .default("any")
+          .describe("Filter videos by duration"),
+
+        regionCode: z
+          .string()
+          .length(2)
+          .optional()
+          .describe("Two-letter country code, for example ES or US"),
+
+        language: z
+          .string()
+          .optional()
+          .describe("Language preference, for example es or en")
+
       }
     },
-    async ({ query, maxResults }) => {
+    async ({ 
+      query, 
+      maxResults,
+      order,
+      publishedAfter,
+      publishedBefore,
+      videoDuration,
+      regionCode,
+      language 
+    }) => {
       const searchResponse = await yt.search.list({
         part: ["snippet"],
         q: query,
         type: ["video"],
-        maxResults
+        maxResults,
+        order,
+        publishedAfter,
+        publishedBefore,
+        videoDuration,
+        regionCode,
+        relevanceLanguage: language
       });
 
       const videoIds = searchResponse.data.items
@@ -77,15 +127,20 @@ function createMcpServer() {
       const videos = videosResponse.data.items?.map(video => ({
         id: video.id,
         title: video.snippet?.title,
+        url: `https://www.youtube.com/watch?v=${video.id}`,
         channel: video.snippet?.channelTitle,
         channelId: video.snippet?.channelId,
         publishedAt: video.snippet?.publishedAt,
         description: video.snippet?.description,
+        thumbnail: video.snippet?.thumbnails?.high?.url
+          ?? video.snippet?.thumbnails?.default?.url,
         tags: video.snippet?.tags ?? [],
-        duration: video.contentDetails?.duration,
-        views: Number(video.statistics?.viewCount ?? 0),
-        likes: Number(video.statistics?.likeCount ?? 0),
-        comments: Number(video.statistics?.commentCount ?? 0)
+        duration: parseYouTubeDuration(video.contentDetails?.duration),
+        statistics: {
+          views: Number(video.statistics?.viewCount ?? 0),
+          likes: Number(video.statistics?.likeCount ?? 0),
+          comments: Number(video.statistics?.commentCount ?? 0)
+        }
       })) ?? [];
 
       return {
