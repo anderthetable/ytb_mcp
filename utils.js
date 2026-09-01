@@ -88,3 +88,59 @@ export function extractYouTubeVideoId(input) {
 
   return null;
 }
+
+export async function resolveYouTubeChannel(yt, input) {
+  const value = input.trim();
+
+  // Channel ID directo
+  if (/^UC[a-zA-Z0-9_-]{22}$/.test(value)) {
+    return value;
+  }
+
+  // @handle
+  if (value.startsWith("@")) {
+    const response = await yt.channels.list({
+      part: ["id"],
+      forHandle: value
+    });
+
+    return response.data.items?.[0]?.id ?? null;
+  }
+
+  try {
+    const url = new URL(value);
+
+    if (
+      url.hostname === "www.youtube.com" ||
+      url.hostname === "youtube.com" ||
+      url.hostname === "m.youtube.com"
+    ) {
+      // /channel/UC...
+      const channelMatch = url.pathname.match(
+        /^\/channel\/(UC[a-zA-Z0-9_-]{22})/
+      );
+
+      if (channelMatch) {
+        return channelMatch[1];
+      }
+
+      // /@handle
+      const handleMatch = url.pathname.match(
+        /^\/(@[^/]+)/
+      );
+
+      if (handleMatch) {
+        const response = await yt.channels.list({
+          part: ["id"],
+          forHandle: handleMatch[1]
+        });
+
+        return response.data.items?.[0]?.id ?? null;
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}

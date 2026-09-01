@@ -4,7 +4,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { youtube } from "@googleapis/youtube";
 import { z } from "zod";
 import "dotenv/config";
-import { parseYouTubeDuration, extractYouTubeVideoId } from "./utils.js";
+import { parseYouTubeDuration, extractYouTubeVideoId, resolveYouTubeChannel } from "./utils.js";
 
 const PORT = process.env.PORT || 3000;
 
@@ -255,23 +255,42 @@ server.registerTool(
     description:
       "Get detailed information and statistics about a specific YouTube channel.",
     inputSchema: {
-      channelId: z
+      channel: z
         .string()
         .min(1)
         .describe(
-          "YouTube channel ID, for example UC_x5XG1OV2P6uZZ5FSM9Ttw"
+          "YouTube channel ID, @handle, or YouTube channel URL."
         )
     }
   },
-  async ({ channelId }) => {
+  async ({ channel }) => {
+    const channelId = await resolveYouTubeChannel(
+      yt,
+      channel
+    );
+
+    if (!channelId) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              error: "YouTube channel not found",
+              input: channel
+            })
+          }
+        ]
+      };
+    }
+
     const response = await yt.channels.list({
       part: ["snippet", "statistics", "contentDetails"],
       id: [channelId]
     });
 
-    const channel = response.data.items?.[0];
+    const channelData = response.data.items?.[0];
 
-    if (!channel) {
+    if (!channelData) {
       return {
         content: [
           {
@@ -290,37 +309,36 @@ server.registerTool(
         {
           type: "text",
           text: JSON.stringify({
-            id: channel.id,
+            id: channelData.id,
 
-            title: channel.snippet?.title,
+            title: channelData.snippet?.title,
 
-            description: channel.snippet?.description,
+            description: channelData.snippet?.description,
 
-            customUrl: channel.snippet?.customUrl,
+            customUrl: channelData.snippet?.customUrl,
 
-            publishedAt: channel.snippet?.publishedAt,
+            publishedAt: channelData.snippet?.publishedAt,
 
             thumbnails: {
-              default: channel.snippet?.thumbnails?.default?.url,
-              medium: channel.snippet?.thumbnails?.medium?.url,
-              high: channel.snippet?.thumbnails?.high?.url
+              default: channelData.snippet?.thumbnails?.default?.url,
+              medium: channelData.snippet?.thumbnails?.medium?.url,
+              high: channelData.snippet?.thumbnails?.high?.url
             },
 
             statistics: {
               subscribers: Number(
-                channel.statistics?.subscriberCount ?? 0
+                channelData.statistics?.subscriberCount ?? 0
               ),
               views: Number(
-                channel.statistics?.viewCount ?? 0
+                channelData.statistics?.viewCount ?? 0
               ),
               videos: Number(
-                channel.statistics?.videoCount ?? 0
+                channelData.statistics?.videoCount ?? 0
               )
             },
 
             uploadsPlaylistId:
-              channel.contentDetails?.relatedPlaylists?.uploads
-
+              channelData.contentDetails?.relatedPlaylists?.uploads
           })
         }
       ]
