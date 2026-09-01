@@ -368,7 +368,14 @@ server.registerTool(
         .default(10)
         .describe(
           "Maximum number of videos to return."
-        )
+        ),
+
+        pageToken: z
+  .string()
+  .optional()
+  .describe(
+    "Token for retrieving the next page of channel videos."
+  )
     }
   },
   async ({ channel, maxResults, pageToken }) => {
