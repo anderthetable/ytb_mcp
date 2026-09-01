@@ -346,6 +346,109 @@ server.registerTool(
   }
 );
 
+server.registerTool(
+  "get_channel_videos",
+  {
+    title: "Get Channel Videos",
+    description:
+      "Get the latest videos uploaded by a specific YouTube channel.",
+    inputSchema: {
+      channel: z
+        .string()
+        .min(1)
+        .describe(
+          "YouTube channel ID, @handle, or YouTube channel URL."
+        ),
+
+      maxResults: z
+        .number()
+        .int()
+        .min(1)
+        .max(50)
+        .default(10)
+        .describe(
+          "Maximum number of videos to return."
+        )
+    }
+  },
+  async ({ channel, maxResults }) => {
+    const channelId = await resolveYouTubeChannel(
+      yt,
+      channel
+    );
+
+    if (!channelId) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              error: "YouTube channel not found",
+              input: channel
+            })
+          }
+        ]
+      };
+    }
+
+    const channelResponse = await yt.channels.list({
+      part: ["contentDetails"],
+      id: [channelId]
+    });
+
+    const channelData = channelResponse.data.items?.[0];
+
+    const uploadsPlaylistId =
+      channelData?.contentDetails?.relatedPlaylists?.uploads;
+
+    if (!uploadsPlaylistId) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              error: "Uploads playlist not found",
+              channelId
+            })
+          }
+        ]
+      };
+    }
+
+    const playlistResponse = await yt.playlistItems.list({
+      part: ["snippet", "contentDetails"],
+      playlistId: uploadsPlaylistId,
+      maxResults
+    });
+
+    const videos =
+      playlistResponse.data.items?.map(item => ({
+        videoId: item.contentDetails?.videoId,
+        title: item.snippet?.title,
+        publishedAt: item.contentDetails?.videoPublishedAt,
+        url: item.contentDetails?.videoId
+          ? `https://www.youtube.com/watch?v=${item.contentDetails.videoId}`
+          : undefined,
+        thumbnail:
+          item.snippet?.thumbnails?.high?.url ??
+          item.snippet?.thumbnails?.default?.url
+      })) ?? [];
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            channelId,
+            count: videos.length,
+            videos
+          })
+        }
+      ]
+    };
+  }
+);
+
   return server;
 }
 
