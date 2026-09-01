@@ -4,7 +4,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { youtube } from "@googleapis/youtube";
 import { z } from "zod";
 import "dotenv/config";
-import { parseYouTubeDuration } from "./utils.js";
+import { parseYouTubeDuration, extractYouTubeVideoId } from "./utils.js";
 
 const PORT = process.env.PORT || 3000;
 
@@ -168,10 +168,26 @@ function createMcpServer() {
       videoId: z
         .string()
         .min(1)
-        .describe("YouTube video ID, for example dQw4w9WgXcQ")
+        .describe("YouTube video ID or URL. Supports youtube.com/watch, youtu.be, youtube.com/shorts and youtube.com/embed URLs.")
     }
   },
-  async ({ videoId }) => {
+  async ({ video }) => {
+    const videoId = extractYouTubeVideoId(video);
+
+    if (!videoId) {
+      return {
+        content: [
+          {
+            type: "text",
+              text: JSON.stringify({
+              error: "Invalid YouTube video ID or URL",
+              input: video
+            })
+          }
+        ]
+      };
+    }
+
     const response = await yt.videos.list({
       part: ["snippet", "statistics", "contentDetails"],
       id: [videoId]

@@ -31,3 +31,60 @@ export function parseYouTubeDuration(duration) {
     formatted
   };
 }
+
+export function extractYouTubeVideoId(input) {
+  const value = input.trim();
+
+  // ID directo
+  if (/^[a-zA-Z0-9_-]{11}$/.test(value)) {
+    return value;
+  }
+
+  try {
+    const url = new URL(value);
+
+    // youtube.com/watch?v=...
+    if (
+      url.hostname === "www.youtube.com" ||
+      url.hostname === "youtube.com" ||
+      url.hostname === "m.youtube.com"
+    ) {
+      const videoId = url.searchParams.get("v");
+
+      if (videoId && /^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+        return videoId;
+      }
+
+      // youtube.com/shorts/...
+      const shortsMatch = url.pathname.match(
+        /^\/shorts\/([a-zA-Z0-9_-]{11})/
+      );
+
+      if (shortsMatch) {
+        return shortsMatch[1];
+      }
+
+      // youtube.com/embed/...
+      const embedMatch = url.pathname.match(
+        /^\/embed\/([a-zA-Z0-9_-]{11})/
+      );
+
+      if (embedMatch) {
+        return embedMatch[1];
+      }
+    }
+
+    // youtu.be/...
+    if (url.hostname === "youtu.be") {
+      const videoId = url.pathname.slice(1).split("/")[0];
+
+      if (/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+        return videoId;
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
