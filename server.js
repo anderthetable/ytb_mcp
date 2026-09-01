@@ -442,7 +442,6 @@ server.registerTool(
         text: JSON.stringify({
           channelId,
           count: 0,
-          nextPageToken: playlistResponse.data.nextPageToken ?? null,
           videos: []
         })
       }
@@ -490,6 +489,7 @@ const videosResponse = await yt.videos.list({
           text: JSON.stringify({
             channelId,
             count: videos.length,
+            nextPageToken: playlistResponse.data.nextPageToken ?? null,
             videos
           })
         }
