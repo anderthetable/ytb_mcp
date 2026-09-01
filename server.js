@@ -421,18 +421,58 @@ server.registerTool(
       maxResults
     });
 
-    const videos =
-      playlistResponse.data.items?.map(item => ({
-        videoId: item.contentDetails?.videoId,
-        title: item.snippet?.title,
-        publishedAt: item.contentDetails?.videoPublishedAt,
-        url: item.contentDetails?.videoId
-          ? `https://www.youtube.com/watch?v=${item.contentDetails.videoId}`
-          : undefined,
-        thumbnail:
-          item.snippet?.thumbnails?.high?.url ??
-          item.snippet?.thumbnails?.default?.url
-      })) ?? [];
+    const videoIds =
+  playlistResponse.data.items
+    ?.map(item => item.contentDetails?.videoId)
+    .filter(Boolean) ?? [];
+
+    if (!videoIds.length) {
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          channelId,
+          count: 0,
+          videos: []
+        })
+      }
+    ]
+  };
+}
+
+const videosResponse = await yt.videos.list({
+  part: ["snippet", "statistics", "contentDetails"],
+  id: videoIds
+});
+
+    const videos = videosResponse.data.items?.map(video => ({
+  id: video.id,
+  title: video.snippet?.title,
+  url: `https://www.youtube.com/watch?v=${video.id}`,
+  channel: video.snippet?.channelTitle,
+  channelId: video.snippet?.channelId,
+  publishedAt: video.snippet?.publishedAt,
+  description: video.snippet?.description,
+  thumbnail:
+    video.snippet?.thumbnails?.high?.url ??
+    video.snippet?.thumbnails?.default?.url,
+  tags: video.snippet?.tags ?? [],
+  duration: parseYouTubeDuration(
+    video.contentDetails?.duration
+  ),
+  statistics: {
+    views: Number(
+      video.statistics?.viewCount ?? 0
+    ),
+    likes: Number(
+      video.statistics?.likeCount ?? 0
+    ),
+    comments: Number(
+      video.statistics?.commentCount ?? 0
+    )
+  }
+})) ?? [];
 
     return {
       content: [
