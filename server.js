@@ -248,6 +248,86 @@ function createMcpServer() {
   }
 );
 
+server.registerTool(
+  "get_youtube_channel",
+  {
+    title: "Get YouTube Channel",
+    description:
+      "Get detailed information and statistics about a specific YouTube channel.",
+    inputSchema: {
+      channelId: z
+        .string()
+        .min(1)
+        .describe(
+          "YouTube channel ID, for example UC_x5XG1OV2P6uZZ5FSM9Ttw"
+        )
+    }
+  },
+  async ({ channelId }) => {
+    const response = await yt.channels.list({
+      part: ["snippet", "statistics", "contentDetails"],
+      id: [channelId]
+    });
+
+    const channel = response.data.items?.[0];
+
+    if (!channel) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              error: "Channel not found",
+              channelId
+            })
+          }
+        ]
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            id: channel.id,
+
+            title: channel.snippet?.title,
+
+            description: channel.snippet?.description,
+
+            customUrl: channel.snippet?.customUrl,
+
+            publishedAt: channel.snippet?.publishedAt,
+
+            thumbnails: {
+              default: channel.snippet?.thumbnails?.default?.url,
+              medium: channel.snippet?.thumbnails?.medium?.url,
+              high: channel.snippet?.thumbnails?.high?.url
+            },
+
+            statistics: {
+              subscribers: Number(
+                channel.statistics?.subscriberCount ?? 0
+              ),
+              views: Number(
+                channel.statistics?.viewCount ?? 0
+              ),
+              videos: Number(
+                channel.statistics?.videoCount ?? 0
+              )
+            },
+
+            uploadsPlaylistId:
+              channel.contentDetails?.relatedPlaylists?.uploads
+
+          })
+        }
+      ]
+    };
+  }
+);
+
   return server;
 }
 
