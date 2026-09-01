@@ -165,7 +165,7 @@ function createMcpServer() {
     description:
       "Get detailed metadata and statistics for a specific YouTube video.",
     inputSchema: {
-      videoId: z
+      video: z
         .string()
         .min(1)
         .describe("YouTube video ID or URL. Supports youtube.com/watch, youtu.be, youtube.com/shorts and youtube.com/embed URLs.")
@@ -193,9 +193,9 @@ function createMcpServer() {
       id: [videoId]
     });
 
-    const video = response.data.items?.[0];
+    const videoData = response.data.items?.[0];
 
-    if (!video) {
+    if (!videoData) {
       return {
         content: [
           {
@@ -210,7 +210,7 @@ function createMcpServer() {
     }
 
     const duration = parseYouTubeDuration(
-      video.contentDetails?.duration
+      videoData.contentDetails?.duration
     );
 
     return {
@@ -218,27 +218,27 @@ function createMcpServer() {
         {
           type: "text",
           text: JSON.stringify({
-            id: video.id,
-            title: video.snippet?.title,
-            url: `https://www.youtube.com/watch?v=${video.id}`,
-            channel: video.snippet?.channelTitle,
-            channelId: video.snippet?.channelId,
-            publishedAt: video.snippet?.publishedAt,
-            description: video.snippet?.description,
-            tags: video.snippet?.tags ?? [],
+            id: videoData.id,
+            title: videoData.snippet?.title,
+            url: `https://www.youtube.com/watch?v=${videoData.id}`,
+            channel: videoData.snippet?.channelTitle,
+            channelId: videoData.snippet?.channelId,
+            publishedAt: videoData.snippet?.publishedAt,
+            description: videoData.snippet?.description,
+            tags: videoData.snippet?.tags ?? [],
             thumbnail:
-              video.snippet?.thumbnails?.high?.url ??
-              video.snippet?.thumbnails?.default?.url,
+              videoData.snippet?.thumbnails?.high?.url ??
+              videoData.snippet?.thumbnails?.default?.url,
             duration,
             statistics: {
               views: Number(
-                video.statistics?.viewCount ?? 0
+                videoData.statistics?.viewCount ?? 0
               ),
               likes: Number(
-                video.statistics?.likeCount ?? 0
+                videoData.statistics?.likeCount ?? 0
               ),
               comments: Number(
-                video.statistics?.commentCount ?? 0
+                videoData.statistics?.commentCount ?? 0
               )
             }
           })
