@@ -371,7 +371,7 @@ server.registerTool(
         )
     }
   },
-  async ({ channel, maxResults }) => {
+  async ({ channel, maxResults, pageToken }) => {
     const channelId = await resolveYouTubeChannel(
       yt,
       channel
@@ -416,10 +416,11 @@ server.registerTool(
     }
 
     const playlistResponse = await yt.playlistItems.list({
-      part: ["snippet", "contentDetails"],
-      playlistId: uploadsPlaylistId,
-      maxResults
-    });
+  part: ["snippet", "contentDetails"],
+  playlistId: uploadsPlaylistId,
+  maxResults,
+  pageToken
+});
 
     const videoIds =
   playlistResponse.data.items
@@ -434,6 +435,7 @@ server.registerTool(
         text: JSON.stringify({
           channelId,
           count: 0,
+          nextPageToken: playlistResponse.data.nextPageToken ?? null,
           videos: []
         })
       }
